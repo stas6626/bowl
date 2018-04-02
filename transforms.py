@@ -49,6 +49,13 @@ class ImageOnly:
 
     def __call__(self, x, mask=None):
         return self.trans(x), mask
+    
+class MaskOnly:
+    def __init__(self, trans):
+        self.trans = trans
+
+    def __call__(self, x, mask=None):
+        return x, self.trans(mask)
 
 class DoubleTrans:
     def __init__(self, trans):
@@ -56,6 +63,16 @@ class DoubleTrans:
 
     def __call__(self, x, mask=None):
         return self.trans(x), self.trans(mask)
+    
+class RandomCrop:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask=None):
+        shape = img.shape
+        first  = np.random.randint(shape[0]-128)
+        second = np.random.randint(shape[1]-128)
+        return img[first:first+128, second:second+128,:], mask[first:first+128, second:second+128,:]
 
 class VerticalFlip:
     def __init__(self, prob=.5):
