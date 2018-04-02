@@ -74,6 +74,14 @@ class RandomCrop:
         second = np.random.randint(shape[1]-128)
         return img[first:first+128, second:second+128,:], mask[first:first+128, second:second+128,:]
 
+class Reshape:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask=None):
+        shape = mask.shape
+        return img, mask.reshape((shape[0],shape[1],1))
+
 class VerticalFlip:
     def __init__(self, prob=.5):
         self.prob = prob
