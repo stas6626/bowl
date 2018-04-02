@@ -50,6 +50,12 @@ class ImageOnly:
     def __call__(self, x, mask=None):
         return self.trans(x), mask
 
+class DoubleTrans:
+    def __init__(self, trans):
+        self.trans = trans
+
+    def __call__(self, x, mask=None):
+        return self.trans(x), self.trans(mask)
 
 class VerticalFlip:
     def __init__(self, prob=.5):
