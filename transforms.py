@@ -12,8 +12,7 @@ class DualCompose:
         for t in self.transforms:
             x, mask = t(x, mask)
         return x, mask
-
-
+    
 class OneOf:
     def __init__(self, transforms, prob=.5):
         self.transforms = transforms
@@ -49,6 +48,18 @@ class ImageOnly:
 
     def __call__(self, x, mask=None):
         return self.trans(x), mask
+
+class RandomAugment:
+    def __init__(self, trans, prob = 0.5):
+        self.trans = trans
+        self.prob = prob
+
+    def __call__(self, x, mask):
+        #x, mask = pack
+        if np.random.rand() > self.prob:
+            return self.trans(x, mask) #self.trans(x), self.trans(mask)
+        else:
+            return x, mask
     
 class MaskOnly:
     def __init__(self, trans):
@@ -68,11 +79,37 @@ class RandomCrop:
     def __init__(self, prob=.5):
         self.prob = prob
 
-    def __call__(self, img, mask=None):
+    def __call__(self, img, mask):
         shape = img.shape
         first  = np.random.randint(shape[0]-128)
         second = np.random.randint(shape[1]-128)
-        return img[first:first+128, second:second+128,:], mask[first:first+128, second:second+128,:]
+        return img[first:first+128, second:second+128, :], mask[first:first+128, second:second+128, :]
+    
+class UnetTansformation:
+    def __init__(self, prob=.5):
+        self.prob = prob
+    
+    def __call__(self, img):#TODO Пересчитать по умнму когда размерность сука не четная
+        shape = img.shape
+        if (shape[0]%32 == 0) and (shape[1]%32 == 0):
+            return img
+        if (shape[0]%2) == 0:
+            indention_0 = (shape[0]%32) / 2
+            new_0_shape = 2*indention_0 + shape[0]
+        else:
+            indention_0 = ((shape[0]%32)+1) / 2
+            new_0_shape = 2*indention_0 + shape[0] - 1
+            
+        if (shape[1]%2) == 0:
+            indention_1 = (shape[1]%32) / 2
+            new_1_shape = 2*indention_1 + shape[0]
+        else:
+            indention_1 = ((shape[1]%32)+1) / 2
+            new_1_shape = 2*indention_1 + shape[0] - 1
+           
+        indented_img = np.zeros((new_0_shape, new_1_shape))
+        indented_img[indention_0:-indention_0, indention_1:-indention_1, :] = img
+        return indented_img
 
 class Reshape:
     def __init__(self, prob=.5):
@@ -549,4 +586,4 @@ class Normalize:
 
         img -= np.ones(img.shape) * self.mean
         img /= np.ones(img.shape) * self.std
-        return img
+        return img*0.5+0.5
