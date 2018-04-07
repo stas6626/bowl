@@ -13,6 +13,33 @@ class DualCompose:
             x, mask = t(x, mask)
         return x, mask
     
+class DanillCompose:
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, x, mask, center, bound):
+        for t in self.transforms:
+            x, mask, center, bound = t(x, mask, center, bound)
+        return x, mask, center, bound
+
+class DanillTransform:
+    def __init__(self, trans, prob = 1.):
+        self.trans = trans
+        self.prob = prob
+
+    def __call__(self, x, mask, center, bound, instruction=(True,True,False,False)):
+        x_in, mask_in, center_in, bound_in = instruction
+        if np.random.rand() > self.prob:
+            if x_in:
+                x = self.trans(x)
+            if mask_in:
+                mask = self.trans(mask)
+            if center_in:
+                center = self.trans(center)
+            if bound_in:
+                bound = self.trans(bound)
+        return x, mask, center, bound
+    
 class OneOf:
     def __init__(self, transforms, prob=.5):
         self.transforms = transforms
@@ -84,6 +111,16 @@ class RandomCrop:
         first  = np.random.randint(shape[0]-128)
         second = np.random.randint(shape[1]-128)
         return img[first:first+128, second:second+128, :], mask[first:first+128, second:second+128, :]
+
+class RandomCrop4:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        shape = img.shape
+        first  = np.random.randint(shape[0]-128)
+        second = np.random.randint(shape[1]-128)
+        return img[first:first+128, second:second+128, :], mask[first:first+128, second:second+128, :], center[first:first+128, second:second+128, :], bound[first:first+128, second:second+128, :]
     
 class UnetTansformation:
     def __init__(self, prob=.5):
@@ -130,6 +167,17 @@ class VerticalFlip:
                 mask = cv2.flip(mask, 0)
         return img, mask
 
+class VerticalFlip4:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        if random.random() < self.prob:
+            img = cv2.flip(img, 0)
+            mask = cv2.flip(mask, 0)
+            center = cv2.flip(center, 0)
+            bound = cv2.flip(bound, 0)
+        return img, mask, center, bound
 
 class HorizontalFlip:
     def __init__(self, prob=.5):
@@ -141,6 +189,18 @@ class HorizontalFlip:
             if mask is not None:
                 mask = cv2.flip(mask, 1)
         return img, mask
+    
+class HorizontalFlip4:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        if random.random() < self.prob:
+            img = cv2.flip(img, 1)
+            mask = cv2.flip(mask, 1)
+            center = cv2.flip(center, 1)
+            bound = cv2.flip(bound, 1)
+        return img, mask, center, bound
 
 
 class RandomFlip:
@@ -203,6 +263,37 @@ class Rotate:
         return img, mask
 
 
+class Shift4:
+    def __init__(self, limit=4, prob=.5):
+        self.limit = limit
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        if random.random() < self.prob:
+            limit = self.limit
+            dx = round(random.uniform(-limit, limit))
+            dy = round(random.uniform(-limit, limit))
+
+            height, width, channel = img.shape
+            y1 = limit+1+dy
+            y2 = y1 + height
+            x1 = limit+1+dx
+            x2 = x1 + width
+
+            img1 = cv2.copyMakeBorder(img, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            img = img1[y1:y2, x1:x2, :]
+            
+            msk1 = cv2.copyMakeBorder(mask, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            mask = msk1[y1:y2, x1:x2, :]
+            
+            msk1 = cv2.copyMakeBorder(center, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            center = msk1[y1:y2, x1:x2, :]
+            
+            msk1 = cv2.copyMakeBorder(center, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            center = msk1[y1:y2, x1:x2, :]
+
+        return img, mask, center, bound
+
 class Shift:
     def __init__(self, limit=4, prob=.5):
         self.limit = limit
@@ -227,7 +318,6 @@ class Shift:
                 mask = msk1[y1:y2, x1:x2, :]
 
         return img, mask
-
 
 class ShiftScale:
     def __init__(self, limit=4, prob=.25):
