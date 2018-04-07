@@ -23,20 +23,21 @@ class DanillCompose:
         return x, mask, center, bound
 
 class DanillTransform:
-    def __init__(self, trans, prob = 1.):
+    def __init__(self, trans, prob = 1., instruction=(True,True,False,False)):
         self.trans = trans
         self.prob = prob
+        self.x_in, self.mask_in, self.center_in, self.bound_in = instruction
 
-    def __call__(self, x, mask, center, bound, instruction=(True,True,False,False)):
-        x_in, mask_in, center_in, bound_in = instruction
-        if np.random.rand() > self.prob:
-            if x_in:
+    def __call__(self, x, mask, center, bound):
+        
+        if np.random.rand() < self.prob:
+            if self.x_in:
                 x = self.trans(x)
-            if mask_in:
+            if self.mask_in:
                 mask = self.trans(mask)
-            if center_in:
+            if self.center_in:
                 center = self.trans(center)
-            if bound_in:
+            if self.bound_in:
                 bound = self.trans(bound)
         return x, mask, center, bound
     
@@ -117,6 +118,8 @@ class RandomCrop4:
         self.prob = prob
 
     def __call__(self, img, mask, center, bound):
+        if self.prob > np.random.rand():
+            return img, mask, center, bound
         shape = img.shape
         first  = np.random.randint(shape[0]-128)
         second = np.random.randint(shape[1]-128)
@@ -128,24 +131,15 @@ class UnetTansformation:
     
     def __call__(self, img):#TODO Пересчитать по умнму когда размерность сука не четная
         shape = img.shape
+        
         if (shape[0]%32 == 0) and (shape[1]%32 == 0):
             return img
-        if (shape[0]%2) == 0:
-            indention_0 = (shape[0]%32) / 2
-            new_0_shape = 2*indention_0 + shape[0]
-        else:
-            indention_0 = ((shape[0]%32)+1) / 2
-            new_0_shape = 2*indention_0 + shape[0] - 1
-            
-        if (shape[1]%2) == 0:
-            indention_1 = (shape[1]%32) / 2
-            new_1_shape = 2*indention_1 + shape[0]
-        else:
-            indention_1 = ((shape[1]%32)+1) / 2
-            new_1_shape = 2*indention_1 + shape[0] - 1
+        
+        indention_0 = 32 - shape[0]%32
+        indention_1 = 32 - shape[1]%32
            
-        indented_img = np.zeros((new_0_shape, new_1_shape))
-        indented_img[indention_0:-indention_0, indention_1:-indention_1, :] = img
+        indented_img = np.zeros((shape[0] + indention_0, shape[1] + indention_1, shape[2])).astype(np.uint8)
+        indented_img[indention_0//2:-(indention_0 - indention_0//2), indention_1//2:-(indention_1 - indention_1//2), :] = img
         return indented_img
 
 class Reshape:
@@ -155,6 +149,15 @@ class Reshape:
     def __call__(self, img, mask=None):
         shape = mask.shape
         return img, mask.reshape((shape[0],shape[1],1))
+    
+class Reshape4:
+    def __init__(self, prob=.5):
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        shape = mask.shape
+        return img, mask.reshape(shape[0],shape[1],1), center.reshape(shape[0],shape[1],1), bound.reshape(shape[0],shape[1],1)
+
 
 class VerticalFlip:
     def __init__(self, prob=.5):
@@ -263,6 +266,31 @@ class Rotate:
         return img, mask
 
 
+class Shift:
+    def __init__(self, limit=4, prob=.5):
+        self.limit = limit
+        self.prob = prob
+
+    def __call__(self, img, mask=None):
+        if random.random() < self.prob:
+            limit = self.limit
+            dx = round(random.uniform(-limit, limit))
+            dy = round(random.uniform(-limit, limit))
+
+            height, width, channel = img.shape
+            y1 = limit+1+dy
+            y2 = y1 + height
+            x1 = limit+1+dx
+            x2 = x1 + width
+
+            img1 = cv2.copyMakeBorder(img, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            img = img1[y1:y2, x1:x2, :]
+            if mask is not None:
+                msk1 = cv2.copyMakeBorder(mask, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+                mask = msk1[y1:y2, x1:x2, :]
+
+        return img, mask
+
 class Shift4:
     def __init__(self, limit=4, prob=.5):
         self.limit = limit
@@ -294,30 +322,6 @@ class Shift4:
 
         return img, mask, center, bound
 
-class Shift:
-    def __init__(self, limit=4, prob=.5):
-        self.limit = limit
-        self.prob = prob
-
-    def __call__(self, img, mask=None):
-        if random.random() < self.prob:
-            limit = self.limit
-            dx = round(random.uniform(-limit, limit))
-            dy = round(random.uniform(-limit, limit))
-
-            height, width, channel = img.shape
-            y1 = limit+1+dy
-            y2 = y1 + height
-            x1 = limit+1+dx
-            x2 = x1 + width
-
-            img1 = cv2.copyMakeBorder(img, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
-            img = img1[y1:y2, x1:x2, :]
-            if mask is not None:
-                msk1 = cv2.copyMakeBorder(mask, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
-                mask = msk1[y1:y2, x1:x2, :]
-
-        return img, mask
 
 class ShiftScale:
     def __init__(self, limit=4, prob=.25):
@@ -351,6 +355,46 @@ class ShiftScale:
                         else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
 
         return img, mask
+    
+class ShiftScale4:
+    def __init__(self, limit=4, prob=.25):
+        self.limit = limit
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        limit = self.limit
+        if random.random() < self.prob:
+            height, width, channel = img.shape
+            assert(width == height)
+            size0 = width
+            size1 = width + 2*limit
+            size = round(random.uniform(size0, size1))
+
+            dx = round(random.uniform(0, size1-size))
+            dy = round(random.uniform(0, size1-size))
+
+            y1 = dy
+            y2 = y1 + size
+            x1 = dx
+            x2 = x1 + size
+
+            img1 = cv2.copyMakeBorder(img, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
+            img = (img1[y1:y2, x1:x2, :] if size == size0
+                   else cv2.resize(img1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
+
+            
+            msk1 = cv2.copyMakeBorder(mask, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
+            mask = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
+            
+            msk1 = cv2.copyMakeBorder(center, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
+            center = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
+            
+            msk1 = cv2.copyMakeBorder(bound, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
+            bound = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
+            
+
+        return img, mask, center, bound
+
 
 
 class ShiftScaleRotate:
@@ -389,6 +433,51 @@ class ShiftScaleRotate:
                                            borderMode=cv2.BORDER_REFLECT_101)
 
         return img, mask
+    
+class ShiftScaleRotate4:
+    def __init__(self, shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, prob=0.5):
+        self.shift_limit = shift_limit
+        self.scale_limit = scale_limit
+        self.rotate_limit = rotate_limit
+        self.prob = prob
+
+    def __call__(self, img, mask, center, bound):
+        if random.random() < self.prob:
+            height, width, channel = img.shape
+
+            angle = random.uniform(-self.rotate_limit, self.rotate_limit)
+            scale = random.uniform(1-self.scale_limit, 1+self.scale_limit)
+            dx = round(random.uniform(-self.shift_limit, self.shift_limit)) * width
+            dy = round(random.uniform(-self.shift_limit, self.shift_limit)) * height
+
+            cc = math.cos(angle/180*math.pi) * scale
+            ss = math.sin(angle/180*math.pi) * scale
+            rotate_matrix = np.array([[cc, -ss], [ss, cc]])
+
+            box0 = np.array([[0, 0], [width, 0],  [width, height], [0, height], ])
+            box1 = box0 - np.array([width/2, height/2])
+            box1 = np.dot(box1, rotate_matrix.T) + np.array([width/2+dx, height/2+dy])
+
+            box0 = box0.astype(np.float32)
+            box1 = box1.astype(np.float32)
+            mat = cv2.getPerspectiveTransform(box0, box1)
+            img = cv2.warpPerspective(img, mat, (width, height),
+                                      flags=cv2.INTER_LINEAR,
+                                      borderMode=cv2.BORDER_REFLECT_101)
+            
+            mask = cv2.warpPerspective(mask, mat, (width, height),
+                                           flags=cv2.INTER_LINEAR,
+                                           borderMode=cv2.BORDER_REFLECT_101)
+            
+            center = cv2.warpPerspective(center, mat, (width, height),
+                                           flags=cv2.INTER_LINEAR,
+                                           borderMode=cv2.BORDER_REFLECT_101)
+            
+            bound = cv2.warpPerspective(bound, mat, (width, height),
+                                           flags=cv2.INTER_LINEAR,
+                                           borderMode=cv2.BORDER_REFLECT_101)
+                       
+        return img, mask, center, bound
 
 
 class CenterCrop:
@@ -676,4 +765,4 @@ class Normalize:
 
         img -= np.ones(img.shape) * self.mean
         img /= np.ones(img.shape) * self.std
-        return img*0.5+0.5
+        return (img)*255
