@@ -12,7 +12,8 @@ class DualCompose:
         for t in self.transforms:
             x, mask = t(x, mask)
         return x, mask
-    
+
+
 class DanillCompose:
     def __init__(self, transforms):
         self.transforms = transforms
@@ -22,14 +23,15 @@ class DanillCompose:
             x, mask, center, bound = t(x, mask, center, bound)
         return x, mask, center, bound
 
+
 class DanillTransform:
-    def __init__(self, trans, prob = 1., instruction=(True,True,False,False)):
+    def __init__(self, trans, prob=1., instruction=(True, True, False, False)):
         self.trans = trans
         self.prob = prob
         self.x_in, self.mask_in, self.center_in, self.bound_in = instruction
 
     def __call__(self, x, mask, center, bound):
-        
+
         if np.random.rand() < self.prob:
             if self.x_in:
                 x = self.trans(x)
@@ -40,7 +42,8 @@ class DanillTransform:
             if self.bound_in:
                 bound = self.trans(bound)
         return x, mask, center, bound
-    
+
+
 class OneOf:
     def __init__(self, transforms, prob=.5):
         self.transforms = transforms
@@ -77,18 +80,20 @@ class ImageOnly:
     def __call__(self, x, mask=None):
         return self.trans(x), mask
 
+
 class RandomAugment:
-    def __init__(self, trans, prob = 0.5):
+    def __init__(self, trans, prob=0.5):
         self.trans = trans
         self.prob = prob
 
     def __call__(self, x, mask):
-        #x, mask = pack
+        # x, mask = pack
         if np.random.rand() > self.prob:
-            return self.trans(x, mask) #self.trans(x), self.trans(mask)
+            return self.trans(x, mask)  # self.trans(x), self.trans(mask)
         else:
             return x, mask
-    
+
+
 class MaskOnly:
     def __init__(self, trans):
         self.trans = trans
@@ -96,22 +101,25 @@ class MaskOnly:
     def __call__(self, x, mask=None):
         return x, self.trans(mask)
 
+
 class DoubleTrans:
     def __init__(self, trans):
         self.trans = trans
 
     def __call__(self, x, mask=None):
         return self.trans(x), self.trans(mask)
-    
+
+
 class RandomCrop:
     def __init__(self, prob=.5):
         self.prob = prob
 
     def __call__(self, img, mask):
         shape = img.shape
-        first  = np.random.randint(shape[0]-128)
-        second = np.random.randint(shape[1]-128)
-        return img[first:first+128, second:second+128, :], mask[first:first+128, second:second+128, :]
+        first = np.random.randint(shape[0] - 128)
+        second = np.random.randint(shape[1] - 128)
+        return img[first:first + 128, second:second + 128, :], mask[first:first + 128, second:second + 128, :]
+
 
 class RandomCrop4:
     def __init__(self, prob=.5):
@@ -121,26 +129,28 @@ class RandomCrop4:
         if self.prob > np.random.rand():
             return img, mask, center, bound
         shape = img.shape
-        first  = np.random.randint(shape[0]-128)
-        second = np.random.randint(shape[1]-128)
-        return img[first:first+128, second:second+128, :], mask[first:first+128, second:second+128, :], center[first:first+128, second:second+128, :], bound[first:first+128, second:second+128, :]
-    
+        first = np.random.randint(shape[0] - 128)
+        second = np.random.randint(shape[1] - 128)
+        return img[first:first + 128, second:second + 128, :], mask[first:first + 128, second:second + 128, :], center[first:first + 128, second:second + 128, :], bound[first:first + 128, second:second + 128, :]
+
+
 class UnetTansformation:
     def __init__(self, prob=.5):
         self.prob = prob
-    
-    def __call__(self, img):#TODO Пересчитать по умнму когда размерность сука не четная
+
+    def __call__(self, img):
         shape = img.shape
-        
-        if (shape[0]%32 == 0) and (shape[1]%32 == 0):
+
+        if (shape[0] % 32 == 0) and (shape[1] % 32 == 0):
             return img
-        
-        indention_0 = 32 - shape[0]%32
-        indention_1 = 32 - shape[1]%32
-           
+
+        indention_0 = 32 - shape[0] % 32
+        indention_1 = 32 - shape[1] % 32
+
         indented_img = np.zeros((shape[0] + indention_0, shape[1] + indention_1, shape[2])).astype(np.uint8)
-        indented_img[indention_0//2:-(indention_0 - indention_0//2), indention_1//2:-(indention_1 - indention_1//2), :] = img
+        indented_img[indention_0 // 2:-(indention_0 - indention_0 // 2), indention_1 // 2:-(indention_1 - indention_1 // 2), :] = img
         return indented_img
+
 
 class Reshape:
     def __init__(self, prob=.5):
@@ -148,15 +158,18 @@ class Reshape:
 
     def __call__(self, img, mask=None):
         shape = mask.shape
-        return img, mask.reshape((shape[0],shape[1],1))
-    
+        return img, mask.reshape((shape[0], shape[1], 1))
+
+
 class Reshape4:
     def __init__(self, prob=.5):
         self.prob = prob
 
     def __call__(self, img, mask, center, bound):
         shape = mask.shape
-        return img, mask.reshape(shape[0],shape[1],1), center.reshape(shape[0],shape[1],1), bound.reshape(shape[0],shape[1],1)
+        return img, mask.reshape(shape[0], shape[1], 1), center.reshape(shape[0], shape[1], 1), bound.reshape(shape[0],
+                                                                                                              shape[1],
+                                                                                                              1)
 
 
 class VerticalFlip:
@@ -170,6 +183,7 @@ class VerticalFlip:
                 mask = cv2.flip(mask, 0)
         return img, mask
 
+
 class VerticalFlip4:
     def __init__(self, prob=.5):
         self.prob = prob
@@ -182,6 +196,7 @@ class VerticalFlip4:
             bound = cv2.flip(bound, 0)
         return img, mask, center, bound
 
+
 class HorizontalFlip:
     def __init__(self, prob=.5):
         self.prob = prob
@@ -192,7 +207,8 @@ class HorizontalFlip:
             if mask is not None:
                 mask = cv2.flip(mask, 1)
         return img, mask
-    
+
+
 class HorizontalFlip4:
     def __init__(self, prob=.5):
         self.prob = prob
@@ -235,13 +251,13 @@ class RandomRotate90:
     def __init__(self, prob=0.5):
         self.prob = prob
 
-    def __call__(self, img, mask=None):        
+    def __call__(self, img, mask=None):
         if random.random() < self.prob:
             factor = random.randint(0, 4)
-            img = np.rot90(img, factor)            
+            img = np.rot90(img, factor)
             if mask is not None:
-                mask = np.rot90(mask, factor)            
-        return img.copy(), mask.copy() # throws error without .copy()
+                mask = np.rot90(mask, factor)
+        return img.copy(), mask.copy()  # throws error without .copy()
 
 
 class Rotate:
@@ -254,7 +270,7 @@ class Rotate:
             angle = random.uniform(-self.limit, self.limit)
 
             height, width = img.shape[0:2]
-            mat = cv2.getRotationMatrix2D((width/2, height/2), angle, 1.0)
+            mat = cv2.getRotationMatrix2D((width / 2, height / 2), angle, 1.0)
             img = cv2.warpAffine(img, mat, (width, height),
                                  flags=cv2.INTER_LINEAR,
                                  borderMode=cv2.BORDER_REFLECT_101)
@@ -278,18 +294,21 @@ class Shift:
             dy = round(random.uniform(-limit, limit))
 
             height, width, channel = img.shape
-            y1 = limit+1+dy
+            y1 = limit + 1 + dy
             y2 = y1 + height
-            x1 = limit+1+dx
+            x1 = limit + 1 + dx
             x2 = x1 + width
 
-            img1 = cv2.copyMakeBorder(img, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            img1 = cv2.copyMakeBorder(img, limit + 1, limit + 1, limit + 1, limit + 1,
+                                      borderType=cv2.BORDER_REFLECT_101)
             img = img1[y1:y2, x1:x2, :]
             if mask is not None:
-                msk1 = cv2.copyMakeBorder(mask, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+                msk1 = cv2.copyMakeBorder(mask, limit + 1, limit + 1, limit + 1, limit + 1,
+                                          borderType=cv2.BORDER_REFLECT_101)
                 mask = msk1[y1:y2, x1:x2, :]
 
         return img, mask
+
 
 class Shift4:
     def __init__(self, limit=4, prob=.5):
@@ -303,21 +322,25 @@ class Shift4:
             dy = round(random.uniform(-limit, limit))
 
             height, width, channel = img.shape
-            y1 = limit+1+dy
+            y1 = limit + 1 + dy
             y2 = y1 + height
-            x1 = limit+1+dx
+            x1 = limit + 1 + dx
             x2 = x1 + width
 
-            img1 = cv2.copyMakeBorder(img, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+            img1 = cv2.copyMakeBorder(img, limit + 1, limit + 1, limit + 1, limit + 1,
+                                      borderType=cv2.BORDER_REFLECT_101)
             img = img1[y1:y2, x1:x2, :]
-            
-            msk1 = cv2.copyMakeBorder(mask, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+
+            msk1 = cv2.copyMakeBorder(mask, limit + 1, limit + 1, limit + 1, limit + 1,
+                                      borderType=cv2.BORDER_REFLECT_101)
             mask = msk1[y1:y2, x1:x2, :]
-            
-            msk1 = cv2.copyMakeBorder(center, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+
+            msk1 = cv2.copyMakeBorder(center, limit + 1, limit + 1, limit + 1, limit + 1,
+                                      borderType=cv2.BORDER_REFLECT_101)
             center = msk1[y1:y2, x1:x2, :]
-            
-            msk1 = cv2.copyMakeBorder(center, limit+1, limit+1, limit+1, limit+1, borderType=cv2.BORDER_REFLECT_101)
+
+            msk1 = cv2.copyMakeBorder(center, limit + 1, limit + 1, limit + 1, limit + 1,
+                                      borderType=cv2.BORDER_REFLECT_101)
             center = msk1[y1:y2, x1:x2, :]
 
         return img, mask, center, bound
@@ -332,13 +355,13 @@ class ShiftScale:
         limit = self.limit
         if random.random() < self.prob:
             height, width, channel = img.shape
-            assert(width == height)
+            assert (width == height)
             size0 = width
-            size1 = width + 2*limit
+            size1 = width + 2 * limit
             size = round(random.uniform(size0, size1))
 
-            dx = round(random.uniform(0, size1-size))
-            dy = round(random.uniform(0, size1-size))
+            dx = round(random.uniform(0, size1 - size))
+            dy = round(random.uniform(0, size1 - size))
 
             y1 = dy
             y2 = y1 + size
@@ -355,7 +378,8 @@ class ShiftScale:
                         else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
 
         return img, mask
-    
+
+
 class ShiftScale4:
     def __init__(self, limit=4, prob=.25):
         self.limit = limit
@@ -365,13 +389,13 @@ class ShiftScale4:
         limit = self.limit
         if random.random() < self.prob:
             height, width, channel = img.shape
-            assert(width == height)
+            assert (width == height)
             size0 = width
-            size1 = width + 2*limit
+            size1 = width + 2 * limit
             size = round(random.uniform(size0, size1))
 
-            dx = round(random.uniform(0, size1-size))
-            dy = round(random.uniform(0, size1-size))
+            dx = round(random.uniform(0, size1 - size))
+            dy = round(random.uniform(0, size1 - size))
 
             y1 = dy
             y2 = y1 + size
@@ -382,19 +406,19 @@ class ShiftScale4:
             img = (img1[y1:y2, x1:x2, :] if size == size0
                    else cv2.resize(img1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
 
-            
             msk1 = cv2.copyMakeBorder(mask, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
-            mask = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
-            
+            mask = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0),
+                                                                           interpolation=cv2.INTER_LINEAR))
+
             msk1 = cv2.copyMakeBorder(center, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
-            center = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
-            
+            center = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0),
+                                                                             interpolation=cv2.INTER_LINEAR))
+
             msk1 = cv2.copyMakeBorder(bound, limit, limit, limit, limit, borderType=cv2.BORDER_REFLECT_101)
-            bound = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0), interpolation=cv2.INTER_LINEAR))
-            
+            bound = (msk1[y1:y2, x1:x2, :] if size == size0 else cv2.resize(msk1[y1:y2, x1:x2, :], (size0, size0),
+                                                                            interpolation=cv2.INTER_LINEAR))
 
         return img, mask, center, bound
-
 
 
 class ShiftScaleRotate:
@@ -409,17 +433,17 @@ class ShiftScaleRotate:
             height, width, channel = img.shape
 
             angle = random.uniform(-self.rotate_limit, self.rotate_limit)
-            scale = random.uniform(1-self.scale_limit, 1+self.scale_limit)
+            scale = random.uniform(1 - self.scale_limit, 1 + self.scale_limit)
             dx = round(random.uniform(-self.shift_limit, self.shift_limit)) * width
             dy = round(random.uniform(-self.shift_limit, self.shift_limit)) * height
 
-            cc = math.cos(angle/180*math.pi) * scale
-            ss = math.sin(angle/180*math.pi) * scale
+            cc = math.cos(angle / 180 * math.pi) * scale
+            ss = math.sin(angle / 180 * math.pi) * scale
             rotate_matrix = np.array([[cc, -ss], [ss, cc]])
 
-            box0 = np.array([[0, 0], [width, 0],  [width, height], [0, height], ])
-            box1 = box0 - np.array([width/2, height/2])
-            box1 = np.dot(box1, rotate_matrix.T) + np.array([width/2+dx, height/2+dy])
+            box0 = np.array([[0, 0], [width, 0], [width, height], [0, height], ])
+            box1 = box0 - np.array([width / 2, height / 2])
+            box1 = np.dot(box1, rotate_matrix.T) + np.array([width / 2 + dx, height / 2 + dy])
 
             box0 = box0.astype(np.float32)
             box1 = box1.astype(np.float32)
@@ -433,7 +457,8 @@ class ShiftScaleRotate:
                                            borderMode=cv2.BORDER_REFLECT_101)
 
         return img, mask
-    
+
+
 class ShiftScaleRotate4:
     def __init__(self, shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, prob=0.5):
         self.shift_limit = shift_limit
@@ -446,17 +471,17 @@ class ShiftScaleRotate4:
             height, width, channel = img.shape
 
             angle = random.uniform(-self.rotate_limit, self.rotate_limit)
-            scale = random.uniform(1-self.scale_limit, 1+self.scale_limit)
+            scale = random.uniform(1 - self.scale_limit, 1 + self.scale_limit)
             dx = round(random.uniform(-self.shift_limit, self.shift_limit)) * width
             dy = round(random.uniform(-self.shift_limit, self.shift_limit)) * height
 
-            cc = math.cos(angle/180*math.pi) * scale
-            ss = math.sin(angle/180*math.pi) * scale
+            cc = math.cos(angle / 180 * math.pi) * scale
+            ss = math.sin(angle / 180 * math.pi) * scale
             rotate_matrix = np.array([[cc, -ss], [ss, cc]])
 
-            box0 = np.array([[0, 0], [width, 0],  [width, height], [0, height], ])
-            box1 = box0 - np.array([width/2, height/2])
-            box1 = np.dot(box1, rotate_matrix.T) + np.array([width/2+dx, height/2+dy])
+            box0 = np.array([[0, 0], [width, 0], [width, height], [0, height], ])
+            box1 = box0 - np.array([width / 2, height / 2])
+            box1 = np.dot(box1, rotate_matrix.T) + np.array([width / 2 + dx, height / 2 + dy])
 
             box0 = box0.astype(np.float32)
             box1 = box1.astype(np.float32)
@@ -464,19 +489,19 @@ class ShiftScaleRotate4:
             img = cv2.warpPerspective(img, mat, (width, height),
                                       flags=cv2.INTER_LINEAR,
                                       borderMode=cv2.BORDER_REFLECT_101)
-            
+
             mask = cv2.warpPerspective(mask, mat, (width, height),
-                                           flags=cv2.INTER_LINEAR,
-                                           borderMode=cv2.BORDER_REFLECT_101)
-            
+                                       flags=cv2.INTER_LINEAR,
+                                       borderMode=cv2.BORDER_REFLECT_101)
+
             center = cv2.warpPerspective(center, mat, (width, height),
-                                           flags=cv2.INTER_LINEAR,
-                                           borderMode=cv2.BORDER_REFLECT_101)
-            
+                                         flags=cv2.INTER_LINEAR,
+                                         borderMode=cv2.BORDER_REFLECT_101)
+
             bound = cv2.warpPerspective(bound, mat, (width, height),
-                                           flags=cv2.INTER_LINEAR,
-                                           borderMode=cv2.BORDER_REFLECT_101)
-                       
+                                        flags=cv2.INTER_LINEAR,
+                                        borderMode=cv2.BORDER_REFLECT_101)
+
         return img, mask, center, bound
 
 
@@ -512,6 +537,7 @@ class Distort1:
 
     ## barrel\pincushion distortion
     """
+
     def __init__(self, distort_limit=0.35, shift_limit=0.25, prob=0.5):
         self.distort_limit = distort_limit
         self.shift_limit = shift_limit
@@ -537,13 +563,13 @@ class Distort1:
             # https://stackoverflow.com/questions/6199636/formulas-for-barrel-pincushion-distortion
             # https://stackoverflow.com/questions/10364201/image-transformation-in-opencv
             x, y = np.mgrid[0:width:1, 0:height:1]
-            x = x.astype(np.float32) - width/2 - dx
-            y = y.astype(np.float32) - height/2 - dy
+            x = x.astype(np.float32) - width / 2 - dx
+            y = y.astype(np.float32) - height / 2 - dy
             theta = np.arctan2(y, x)
-            d = (x*x + y*y)**0.5
-            r = d*(1+k*d*d)
-            map_x = r*np.cos(theta) + width/2 + dx
-            map_y = r*np.sin(theta) + height/2 + dy
+            d = (x * x + y * y) ** 0.5
+            r = d * (1 + k * d * d)
+            map_x = r * np.cos(theta) + width / 2 + dx
+            map_y = r * np.sin(theta) + height / 2 + dy
 
             img = cv2.remap(img, map_x, map_y, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT_101)
             if mask is not None:
@@ -556,6 +582,7 @@ class Distort2:
     #http://pythology.blogspot.sg/2014/03/interpolation-on-regular-distorted-grid.html
     ## grid distortion
     """
+
     def __init__(self, num_steps=10, distort_limit=0.2, prob=0.5):
         self.num_steps = num_steps
         self.distort_limit = distort_limit
@@ -575,9 +602,9 @@ class Distort2:
                     end = width
                     cur = width
                 else:
-                    cur = prev + x_step*(1+random.uniform(-self.distort_limit, self.distort_limit))
+                    cur = prev + x_step * (1 + random.uniform(-self.distort_limit, self.distort_limit))
 
-                xx[start:end] = np.linspace(prev, cur, end-start)
+                xx[start:end] = np.linspace(prev, cur, end - start)
                 prev = cur
 
             y_step = height // self.num_steps
@@ -590,9 +617,9 @@ class Distort2:
                     end = height
                     cur = height
                 else:
-                    cur = prev + y_step*(1+random.uniform(-self.distort_limit, self.distort_limit))
+                    cur = prev + y_step * (1 + random.uniform(-self.distort_limit, self.distort_limit))
 
-                yy[start:end] = np.linspace(prev, cur, end-start)
+                yy[start:end] = np.linspace(prev, cur, end - start)
                 prev = cur
 
             map_x, map_y = np.meshgrid(xx, yy)
@@ -617,6 +644,7 @@ class RandomFilter:
     """
     blur sharpen, etc
     """
+
     def __init__(self, limit=.5, prob=.5):
         self.limit = limit
         self.prob = prob
@@ -624,10 +652,10 @@ class RandomFilter:
     def __call__(self, img):
         if random.random() < self.prob:
             alpha = self.limit * random.uniform(0, 1)
-            kernel = np.ones((3, 3), np.float32)/9 * 0.2
+            kernel = np.ones((3, 3), np.float32) / 9 * 0.2
 
             colored = img[..., :3]
-            colored = alpha * cv2.filter2D(colored, -1, kernel) + (1-alpha) * colored
+            colored = alpha * cv2.filter2D(colored, -1, kernel) + (1 - alpha) * colored
             maxval = np.max(img[..., :3])
             dtype = img.dtype
             img[..., :3] = clip(colored, dtype, maxval)
@@ -648,11 +676,11 @@ class RandomBrightness:
 
     def __call__(self, img):
         if random.random() < self.prob:
-            alpha = 1.0 + self.limit*random.uniform(-1, 1)
+            alpha = 1.0 + self.limit * random.uniform(-1, 1)
 
             maxval = np.max(img[..., :3])
             dtype = img.dtype
-            img[..., :3] = clip(alpha * img[...,:3], dtype, maxval)
+            img[..., :3] = clip(alpha * img[..., :3], dtype, maxval)
         return img
 
 
@@ -663,7 +691,7 @@ class RandomContrast:
 
     def __call__(self, img):
         if random.random() < self.prob:
-            alpha = 1.0 + self.limit*random.uniform(-1, 1)
+            alpha = 1.0 + self.limit * random.uniform(-1, 1)
 
             gray = cv2.cvtColor(img[:, :, :3], cv2.COLOR_BGR2GRAY)
             gray = (3.0 * (1.0 - alpha) / gray.size) * np.sum(gray)
@@ -690,6 +718,7 @@ class RandomSaturation:
             img[..., :3] = clip(img[..., :3], dtype, maxval)
         return img
 
+
 class RandomHueSaturationValue:
     def __init__(self, hue_shift_limit=(-10, 10), sat_shift_limit=(-25, 25), val_shift_limit=(-25, 25), prob=0.5):
         self.hue_shift_limit = hue_shift_limit
@@ -710,6 +739,7 @@ class RandomHueSaturationValue:
             image = cv2.merge((h, s, v))
             image = cv2.cvtColor(image, cv2.COLOR_HSV2BGR)
         return image
+
 
 class CLAHE:
     def __init__(self, clipLimit=2.0, tileGridSize=(8, 8)):
@@ -753,16 +783,20 @@ def augment_color(x, mask=None, prob=.5):
         ImageOnly(RandomHueSaturationValue())
     ])(x, mask)
 
+
 class Normalize:
-    def __init__(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
+    def __init__(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5), prob = 1.):
         self.mean = mean
         self.std = std
+        self.prob = prob 
 
     def __call__(self, img):
+        if self.prob < np.random.rand():
+            return img
         max_pixel_value = 255.0
 
         img = img.astype(np.float32) / max_pixel_value
 
         img -= np.ones(img.shape) * self.mean
         img /= np.ones(img.shape) * self.std
-        return (img)*255
+        return img * 255
