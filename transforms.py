@@ -141,11 +141,11 @@ class UnetTansformation:
     def __call__(self, img):
         shape = img.shape
 
-        if (shape[0] % 32 == 0) and (shape[1] % 32 == 0):
+        if (shape[0] % 64 == 0) and (shape[1] % 64 == 0):
             return img
 
-        indention_0 = 32 - shape[0] % 32
-        indention_1 = 32 - shape[1] % 32
+        indention_0 = 64 - shape[0] % 64
+        indention_1 = 64 - shape[1] % 64
 
         indented_img = np.zeros((shape[0] + indention_0, shape[1] + indention_1, shape[2])).astype(np.uint8)
         indented_img[indention_0 // 2:-(indention_0 - indention_0 // 2), indention_1 // 2:-(indention_1 - indention_1 // 2), :] = img
