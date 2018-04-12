@@ -183,15 +183,23 @@ class AlbuNet(nn.Module):
         self.final = nn.Conv2d(num_filters, num_classes, kernel_size=1)
 
     def forward(self, x):
+        #print("input size: ", x.size())
         conv1 = self.conv1(x)
+        #print("conv1 size: ", conv1.size())
         conv2 = self.conv2(conv1)
+        #print("conv2 size: ", conv2.size())
         conv3 = self.conv3(conv2)
+        #print("conv3 size: ", conv3.size())
         conv4 = self.conv4(conv3)
+        #print("conv4 size: ", conv4.size())
         conv5 = self.conv5(conv4)
+        #print("conv5 size: ", conv5.size())
 
         center = self.center(self.pool(conv5))
+        #print("center size: ", center.size())
 
         dec5 = self.dec5(torch.cat([center, conv5], 1))
+        #print("dec5 size: ", dec5.size())
 
         dec4 = self.dec4(torch.cat([dec5, conv4], 1))
         dec3 = self.dec3(torch.cat([dec4, conv3], 1))
@@ -200,13 +208,13 @@ class AlbuNet(nn.Module):
         dec0 = self.dec0(dec1)
 
         if self.num_classes > 1:
-            x_out = F.log_softmax(self.final(dec0), dim=1)
+            x_out = self.final(dec0)
         else:
             x_out = self.final(dec0)
 
         return x_out
-
-
+    
+    
 class UNet16(nn.Module):
     def __init__(self, num_classes=1, num_filters=32, pretrained=False, is_deconv=False):
         """
